@@ -1,0 +1,80 @@
+name: Personal iPhone IPA
+
+# Manual runs only: does not publish a release or deploy the upstream website.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-personal-ipa:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Select installed Xcode 26 or newer
+        run: |
+          python3 - <<'PY'
+          import os, re, subprocess
+          from pathlib import Path
+          candidates = []
+          for app in Path('/Applications').glob('Xcode*.app'):
+              # Avoid beta installations when a release toolchain is available.
+              if 'beta' in app.name.lower():
+                  continue
+              developer = app / 'Contents/Developer'
+              result = subprocess.run(
+                  ['xcodebuild', '-version'],
+                  env={**os.environ, 'DEVELOPER_DIR': str(developer)},
+                  capture_output=True, text=True,
+              )
+              match = re.search(r'Xcode (\d+)(?:\.(\d+))?(?:\.(\d+))?', result.stdout)
+              if result.returncode == 0 and match:
+                  version = tuple(int(part or 0) for part in match.groups())
+                  if version[0] >= 26:
+                      candidates.append((version, str(developer)))
+          if not candidates:
+              raise SystemExit('This runner has no release Xcode 26+. Update the runner image.')
+          version, developer = max(candidates)
+          with open(os.environ['GITHUB_ENV'], 'a') as output:
+              output.write(f'DEVELOPER_DIR={developer}\n')
+          print(f'Using Xcode {version}: {developer}')
+          PY
+
+      - name: Install XcodeGen
+        run: command -v xcodegen >/dev/null || brew install xcodegen
+
+      - name: Test and build unsigned physical iPhone package
+        run: bash scripts/personal/build.sh
+
+      - name: Upload install package and attribution
+        uses: actions/upload-artifact@v4
+        with:
+          name: TidyByte-Personal-unsigned
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            build/personal/TidyByte-Personal-unsigned.ipa
+            build/personal/TidyByte-Personal-unsigned.ipa.sha256
+            build/personal/BUILD_INFO.json
+            build/personal/LICENSE
+            docs/PERSONAL_TRIAL.zh-CN.md
+
+      - name: Upload build and test diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: TidyByte-Personal-diagnostics
+          if-no-files-found: warn
+          retention-days: 7
+          path: |
+            build/personal/*.log
+            build/personal/xcode-version.txt
+            build/personal/SOURCE_INFO.json
+            build/personal/device-build-settings.json
+            build/personal/*.xcresult

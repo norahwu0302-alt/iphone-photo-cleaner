@@ -15,16 +15,23 @@ enum WidgetRoute: String {
 /// Shared App Group storage for the cross-target `WidgetSnapshot`. The main app
 /// writes; the widget reads. Dependency-free (Foundation only) so it stays light
 /// enough to compile into the widget extension. Compiled into BOTH targets.
+/// Personal builds have no widget or App Group entitlement and use app-local
+/// storage for snapshots, language preferences, and pending routes instead.
 enum AppGroupStore {
+#if !PERSONAL_BUILD
     static let suiteName = "group.com.sakshammittal.tidybyte.shared"
+#endif
     static let snapshotKey = "widget.snapshot.v1"
     static let pendingRouteKey = "widget.pendingRoute.v1"
 
     static var defaults: UserDefaults {
-        // Falls back to .standard if the App Group entitlement is missing (e.g.
-        // a build without the capability) so calls stay safe no-ops rather than
-        // crashing.
-        UserDefaults(suiteName: suiteName) ?? .standard
+#if PERSONAL_BUILD
+        // Do not open the upstream App Group suite: a non-nil UserDefaults
+        // instance does not establish that this build has its entitlement.
+        return .standard
+#else
+        return UserDefaults(suiteName: suiteName) ?? .standard
+#endif
     }
 
     static func save(_ snapshot: WidgetSnapshot) {

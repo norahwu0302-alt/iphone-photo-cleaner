@@ -1,0 +1,89 @@
+# Personal, unsigned build. Generate with: bash scripts/personal/build.sh
+# This deliberately does not inherit the upstream signing or widget settings.
+name: TidybytePersonal
+options:
+  bundleIdPrefix: org.local.tidybyte.personal
+  deploymentTarget:
+    iOS: "17.0"
+  xcodeVersion: "26.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    SWIFT_STRICT_CONCURRENCY: complete
+    SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) PERSONAL_BUILD"
+    TARGETED_DEVICE_FAMILY: "1,2"
+    MARKETING_VERSION: "${PERSONAL_MARKETING_VERSION}"
+    CURRENT_PROJECT_VERSION: "${PERSONAL_BUILD_NUMBER}"
+    CODE_SIGNING_ALLOWED: NO
+    CODE_SIGNING_REQUIRED: NO
+    CODE_SIGN_IDENTITY: ""
+    CODE_SIGN_ENTITLEMENTS: ""
+    DEVELOPMENT_TEAM: ""
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: YES
+    STRING_CATALOG_GENERATE_SYMBOLS: YES
+    LOCALIZATION_PREFERS_STRING_CATALOGS: YES
+
+targets:
+  # Keep the module name so existing @testable import Tidybyte tests still run.
+  Tidybyte:
+    type: application
+    platform: iOS
+    sources:
+      - path: ${PERSONAL_SOURCE_ROOT}/Tidybyte
+        excludes:
+          - "Scripts/**"
+          - "*.entitlements"
+          - "Info.plist"
+          - "InfoPlist.xcstrings"
+      # Only the display name differs; all permission translations are retained.
+      - path: ${PERSONAL_SOURCE_ROOT}/build/personal/Resources/InfoPlist.xcstrings
+      - path: ${PERSONAL_SOURCE_ROOT}/LICENSE
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.local.tidybyte.personal
+        INFOPLIST_KEY_CFBundleDisplayName: "TidyByte Test"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_FILE: ${PERSONAL_SOURCE_ROOT}/scripts/personal/Info.plist
+        INFOPLIST_KEY_NSPhotoLibraryUsageDescription: "TidyByte Test needs access to your photo library to help you organize and clean up photos and videos."
+        INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription: "TidyByte Test needs write access to save compressed videos and converted photos."
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
+
+  TidybyteTests:
+    type: bundle.unit-test
+    platform: iOS
+    hostApplication: Tidybyte
+    sources:
+      - path: ${PERSONAL_SOURCE_ROOT}/TidybyteTests
+    dependencies:
+      - target: Tidybyte
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.local.tidybyte.personal.tests
+        GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  TidybytePersonal:
+    build:
+      targets:
+        Tidybyte: all
+    run:
+      config: Debug
+      executable: Tidybyte
+    test:
+      config: Debug
+      targets:
+        - TidybyteTests
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release

@@ -5,9 +5,9 @@ import Foundation
 /// Two processes need this value: the app renders the UI, and the widget
 /// extension renders its own views in a separate process with its own
 /// `UserDefaults`. The App Group suite is the shared channel; `.standard` is
-/// also written so unit tests can inject a scratch suite and so the app still
-/// works if the App Group entitlement is missing (same defensive posture as
-/// `AppGroupStore.defaults`).
+/// also written as the app-local fallback. `PERSONAL_BUILD` selects only
+/// `.standard` through `AppGroupStore.defaults`, so it never opens an App Group
+/// suite. Unit tests can still inject a scratch suite.
 ///
 /// Foundation-only on purpose: this file compiles into the widget target too.
 enum LanguagePreferenceStore {
